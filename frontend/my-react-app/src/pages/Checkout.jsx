@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Card, ListGroup, Button, Container, Form, Alert } from 'react-bootstrap'; 
-import { useLocation, Link } from 'react-router-dom';
+import { Card, ListGroup, Button, Container, Form, Alert, Modal } from 'react-bootstrap'; 
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const Checkout = () => {
     const location = useLocation();
-    const { cart } = location.state || { cart: [] }; 
+    const savedCart = JSON.parse(localStorage.getItem('cart')) || []; // Obtener carrito guardado
+    const { cart: initialCart } = location.state || { cart: savedCart }; // Obtener el carrito o el guardado
 
+    const [cart, setCart] = useState(initialCart); // Estado del carrito
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userName, setUserName] = useState('');
-    const [userData, setUserData] = useState({ name: '', email: '', phone: '', address: '' });
-    const [showForm, setShowForm] = useState(false); 
-    const [showPayment, setShowPayment] = useState(false); 
+    const [userData, setUserData] = useState({ name: '', email: '', password: '', phone: '', address: '' });
+    const [showForm, setShowForm] = useState(false);
+    const [showPayment, setShowPayment] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState(''); 
-    const [showTransferDetails, setShowTransferDetails] = useState(false); 
+    const [paymentMethod, setPaymentMethod] = useState('');
+    const [showRegisterModal, setShowRegisterModal] = useState(false); // Estado para el modal de registro
+    const [showLoginModal, setShowLoginModal] = useState(false); // Estado para el modal de inicio de sesión
 
+    // Guardar el carrito en localStorage cada vez que cambie
+    useEffect(() => {
+        localStorage.setItem('cart', JSON.stringify(cart));
+    }, [cart]);
+
+    // Fetch user data when the component mounts
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -27,8 +36,8 @@ const Checkout = () => {
                 },
             })
             .then(response => {
-                setUserName(response.data.name); 
-                setUserData(response.data); 
+                setUserName(response.data.name); // Set the user's name
+                setUserData(response.data); // Set user data for the form
             })
             .catch(error => {
                 console.error('Error fetching user data:', error);
@@ -46,7 +55,7 @@ const Checkout = () => {
 
     const handleContinue = () => {
         if (isLoggedIn) {
-            setShowForm(true); // Show the form if logged in
+            setShowForm(true);
         } else {
             alert('Debes iniciar sesión para continuar.');
         }
@@ -54,23 +63,45 @@ const Checkout = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setUserData((prev) => ({ ...prev, [name]: value })); // Update user data
+        setUserData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        try {
+            const { name, email, password } = userData;
+            await axios.post('http://localhost:3000/api/user/register', { name, email, password });
+            setShowRegisterModal(false);
+            alert('¡Registro exitoso! Ahora puedes iniciar sesión.');
+        } catch (error) {
+            alert(error.response?.data.message || 'Error al registrar el usuario.');
+        }
+    };
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        try {
+            const { email, password } = userData;
+            const response = await axios.post('http://localhost:3000/api/user/login', { email, password });
+            localStorage.setItem('token', response.data.token);
+            setUserName(response.data.name);
+            setIsLoggedIn(true);
+            setShowLoginModal(false);
+            alert('¡Inicio de sesión exitoso!');
+        } catch (error) {
+            alert(error.response?.data.message || 'Error al iniciar sesión.');
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Handle form submission, e.g., save the user data
             await axios.put('http://localhost:3000/api/user/update', userData, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setSuccessMessage('¡Datos actualizados correctamente!');
             setErrorMessage('');
-            setShowPayment(true); // Show payment options after successful update
-            
-            // Scroll down to payment options
-            const paymentSection = document.getElementById('paymentSection');
-            paymentSection.scrollIntoView({ behavior: 'smooth' });
+            setShowPayment(true);
         } catch (error) {
             setErrorMessage(error.response?.data.message || 'Error al actualizar los datos.');
             setSuccessMessage('');
@@ -78,26 +109,26 @@ const Checkout = () => {
     };
 
     const handlePaymentMethodChange = (e) => {
-        setPaymentMethod(e.target.value); // Update the selected payment method
-        setShowTransferDetails(e.target.value === 'bank'); // Show transfer details if bank transfer is selected
+        setPaymentMethod(e.target.value);
     };
 
     const handlePayment = () => {
-        // Handle the payment process here (Stripe integration or bank transfer)
         alert(`Payment method: ${paymentMethod}\nTotal Amount: $${totalAmount.toFixed(2)}`);
     };
 
     return (
-        <Container style={{ marginTop: '20px' }}>
-            <h1>Checkout</h1>
+        <Container style={{ marginTop: '20px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <h1 style={{ textAlign: 'center' }}>Checkout</h1>
             {isLoggedIn ? (
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <h4>{`Hola, ${userName}!`}</h4> {/* Saludo para el usuario logueado */}
+                    <h4>{`Hola, ${userName}!`}</h4>
                 </div>
             ) : (
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                     <h4>No estás registrado.</h4>
-                    <Link to="/signup">Registrate aquí</Link>
+                    <a href="#" onClick={() => setShowRegisterModal(true)}>Registrate aquí</a>
+                    <br />
+                    <a href="#" onClick={() => setShowLoginModal(true)}>Iniciar Sesión</a>
                 </div>
             )}
             <Card>
@@ -192,18 +223,87 @@ const Checkout = () => {
                             Proceder al Pago
                         </Button>
                     </Form>
-                    {showTransferDetails && (
-                        <div style={{ marginTop: '20px' }}>
-                            <h5>Detalles de Transferencia:</h5>
-                            <p>Banco: Banco Santander</p>
-                            <p>Cuenta: 123456789</p>
-                            <p>Nombre: Nombre</p>
-                        </div>
-                    )}
                 </div>
             )}
 
-            {/* espacio para que no se vea tan abajo */}
+            {/* Modal para Registro */}
+            <Modal show={showRegisterModal} onHide={() => setShowRegisterModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Registro de Usuario</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form onSubmit={handleRegister}>
+                        <Form.Group controlId="registerName" className="mb-3">
+                            <Form.Label>Nombre</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="name"
+                                value={userData.name}
+                                onChange={handleChange}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="registerEmail" className="mb-3">
+                            <Form.Label>Email</Form.Label>
+                            <Form.Control
+                                type="email"
+                                name="email"
+                                value={userData.email}
+                                onChange={handleChange}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="registerPassword" className="mb-3">
+                            <Form.Label>Contraseña</Form.Label>
+                            <Form.Control
+                                type="password"
+                                name="password"
+                                value={userData.password || ''}
+                                onChange={handleChange}
+                                required
+                            />
+                        </Form.Group>
+                        <Button variant="primary" type="submit">
+                            Registrarse
+                        </Button>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+
+            {/* Modal para Inicio de Sesión */}
+            <Modal show={showLoginModal} onHide={() => setShowLoginModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Inicio de Sesión</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form onSubmit={handleLogin}>
+                        <Form.Group controlId="loginEmail" className="mb-3">
+                            <Form.Label>Email</Form.Label>
+                            <Form.Control
+                                type="email"
+                                name="email"
+                                value={userData.email}
+                                onChange={handleChange}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="loginPassword" className="mb-3">
+                            <Form.Label>Contraseña</Form.Label>
+                            <Form.Control
+                                type="password"
+                                name="password"
+                                value={userData.password || ''}
+                                onChange={handleChange}
+                                required
+                            />
+                        </Form.Group>
+                        <Button variant="primary" type="submit">
+                            Iniciar Sesión
+                        </Button>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+
             <div style={{ height: '200px' }}></div>
         </Container>
     );
