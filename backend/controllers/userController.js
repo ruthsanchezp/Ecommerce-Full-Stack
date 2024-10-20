@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 
+
 // Registrar usuario
 
 exports.registerUser = async (req, res) => {
@@ -10,7 +11,7 @@ exports.registerUser = async (req, res) => {
         if (existingUser) {
             return res.status(400).json({ message: 'El email ya está registrado' });
         }
-        const newUser = await User.create({ name, email, password }); // Create user with only name, email, and password
+        const newUser = await User.create({ name, email, password }); 
         res.status(201).json({ message: 'Usuario registrado exitosamente' });
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -52,19 +53,16 @@ exports.updateUser = async (req, res) => {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
 
-        // Update the fields that are provided
-        user.email = email || user.email; // Update only if a new email is provided
-        user.name = name || user.name; // Update name if provided
-        user.phone = phone || user.phone; // Update phone if provided
-        user.address = address || user.address; // Update address if provided
+        user.email = email || user.email; 
+        user.name = name || user.name; 
+        user.phone = phone || user.phone; 
+        user.address = address || user.address;
         if (password) {
-            user.password = password; // Update password if provided
+            user.password = password;
         }
 
-        // Save changes
         await user.save();
 
-        // Return updated user data without password
         const { password: _, ...userWithoutPassword } = user.toObject();
         res.status(200).json(userWithoutPassword);
     } catch (error) {

@@ -3,16 +3,16 @@ const Product = require('../models/productModel');
 
 // Crear producto
 exports.createProduct = async (req, res) => {
-    const { name, description, price } = req.body;
-    const userId = req.userId; // Obtener el ID del usuario de la verificación del token
+    const { name, description, price, user } = req.body; // Asegurar de que 'user' esté incluido en el cuerpo
 
     try {
         const newProduct = await Product.create({
             name,
             description,
             price,
-            user: userId // Puedes mantener el usuario si deseas asociar el producto al usuario
+            user: user // Almacenar el ID del usuario aquí desde el cuerpo de la solicitud
         });
+        
         res.status(201).json(newProduct);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -22,51 +22,52 @@ exports.createProduct = async (req, res) => {
 // Leer todos los productos
 exports.readAllProducts = async (req, res) => {
     try {
-        const products = await Product.find().populate('user'); // Si no utilizas user, puedes eliminar el populate
+        // Obtener todos los productos y popular el campo 'user' con la información del usuario
+        const products = await Product.find().populate('user');
         res.status(200).json(products);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
 
-// Leer un producto específico
+// Leer un producto específico por su ID
 exports.readOneProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        // Buscar producto por ID
+        const product = await Product.findById(req.params.id).populate('user');
         if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
+        
         res.status(200).json(product);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
-
-// Actualizar producto
 exports.updateProduct = async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
+
         if (!product) {
             return res.status(404).json({ message: 'Producto no encontrado' });
         }
 
-        product.name = req.body.name || product.name;
-        product.description = req.body.description || product.description;
-        product.price = req.body.price || product.price;
-
-        await product.save();
-        res.status(200).json(product);
+        // Actualizar el producto con los nuevos datos
+        const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.status(200).json(updatedProduct);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
-
-// Eliminar producto
+// Eliminar un producto (cualquiera puede eliminar)
 exports.deleteProduct = async (req, res) => {
     try {
+        // Buscar el producto por ID
         const product = await Product.findById(req.params.id);
+
         if (!product) {
             return res.status(404).json({ message: 'Producto no encontrado' });
         }
 
+        // Eliminar el producto
         await Product.findByIdAndDelete(req.params.id);
         res.status(204).json({ message: 'Producto eliminado' });
     } catch (error) {
