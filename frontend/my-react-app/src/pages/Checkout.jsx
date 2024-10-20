@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, ListGroup, Button, Container, Form, Alert, Modal } from 'react-bootstrap'; 
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -19,6 +19,7 @@ const Checkout = () => {
     const [paymentMethod, setPaymentMethod] = useState('');
     const [showRegisterModal, setShowRegisterModal] = useState(false); // Estado para el modal de registro
     const [showLoginModal, setShowLoginModal] = useState(false); // Estado para el modal de inicio de sesión
+    const endOfPageRef = useRef(null); // Referencia al final de la página
 
     // Guardar el carrito en localStorage cada vez que cambie
     useEffect(() => {
@@ -102,6 +103,11 @@ const Checkout = () => {
             setSuccessMessage('¡Datos actualizados correctamente!');
             setErrorMessage('');
             setShowPayment(true);
+
+            // Hacer scroll hacia el final de la página
+            if (endOfPageRef.current) {
+                endOfPageRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
         } catch (error) {
             setErrorMessage(error.response?.data.message || 'Error al actualizar los datos.');
             setSuccessMessage('');
@@ -206,18 +212,12 @@ const Checkout = () => {
                             <Form.Label>Selecciona tu método de pago:</Form.Label>
                             <Form.Check
                                 type="radio"
-                                label="Stripe"
+                                label="Paypal"
                                 name="paymentMethod"
                                 value="stripe"
                                 onChange={handlePaymentMethodChange}
                             />
-                            <Form.Check
-                                type="radio"
-                                label="Transferencia Bancaria"
-                                name="paymentMethod"
-                                value="bank"
-                                onChange={handlePaymentMethodChange}
-                            />
+                           
                         </Form.Group>
                         <Button variant="primary" onClick={handlePayment}>
                             Proceder al Pago
@@ -304,7 +304,8 @@ const Checkout = () => {
                 </Modal.Body>
             </Modal>
 
-            <div style={{ height: '200px' }}></div>
+            {/* Añadir espacio al final para el scroll */}
+            <div ref={endOfPageRef} style={{ height: '200px' }}></div>
         </Container>
     );
 };

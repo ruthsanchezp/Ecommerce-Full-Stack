@@ -3,14 +3,15 @@ const Product = require('../models/productModel');
 
 // Crear producto
 exports.createProduct = async (req, res) => {
-    const { name, description, price, user } = req.body; // Asegurar de que 'user' esté incluido en el cuerpo
+    const { name, description, price, user} = req.body; 
 
     try {
         const newProduct = await Product.create({
             name,
             description,
             price,
-            user: user // Almacenar el ID del usuario aquí desde el cuerpo de la solicitud
+            user: user, // Almacenar el ID del usuario aquí desde el cuerpo de la solicitud
+       
         });
         
         res.status(201).json(newProduct);
