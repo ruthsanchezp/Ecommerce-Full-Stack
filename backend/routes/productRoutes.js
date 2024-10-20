@@ -1,17 +1,20 @@
 const express = require('express');
-const { registerUser, loginUser, updateUser } = require('../controllers/userController'); // Controladores del usuario
-const { readAllProducts } = require('../controllers/productController'); // Controlador de productos
-const verifyTokenMiddleware = require('../middleware/authMiddleware'); // Middleware de autenticación
-
+const { createProduct, readAllProducts, readOneProduct, updateProduct, deleteProduct } = require('../controllers/productController');
 const router = express.Router();
 
-// Rutas de usuario
-router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.get('/verifytoken', verifyTokenMiddleware, (req, res) => res.status(200).json({ message: 'Token is valid' })); // Ruta para verificar el token
-router.put('/profile', verifyTokenMiddleware, updateUser); // Ruta para actualizar el perfil del usuario
+// Ruta para crear un producto
+router.post('/create', createProduct);
 
-// Ruta para obtener todos los productos
-router.get('/readall', readAllProducts); // Añadir la ruta para leer todos los productos
+// Ruta para leer todos los productos
+router.get('/readall', readAllProducts);
+
+// Ruta para leer un producto específico
+router.get('/readone/:id', readOneProduct);
+
+// Ruta para actualizar un producto
+router.put('/update/:id', updateProduct);
+
+// Ruta para eliminar un producto
+router.delete('/delete/:id', deleteProduct);
 
 module.exports = router;

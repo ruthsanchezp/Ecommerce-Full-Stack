@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import ProductList from '../components/ProductList';
-import { Container, Modal, Button, Form } from 'react-bootstrap'; // Import Modal and Form from react-bootstrap
+import { Container, Modal, Button, Form } from 'react-bootstrap';
 import FixedCart from '../components/FixedCart';
 import Header from '../components/Header';
 import axios from 'axios';
 
 const Home = () => {
-    const [cart, setCart] = useState([]); // State for cart
-    const [products, setProducts] = useState([]); // State for products
-    const [isLoggedIn, setIsLoggedIn] = useState(false); // Update based on actual auth state
-    const [userName, setUserName] = useState(''); // State for storing logged-in user's name
-    const [showModal, setShowModal] = useState(false); // State for modal visibility
-    const [modalType, setModalType] = useState(''); // State to determine the type of modal (Sign Up / Log In)
-    const [formData, setFormData] = useState({ email: '', password: '', name: '' }); // State for form data
-    const [errorMessage, setErrorMessage] = useState(''); // State for error messages
+    const [cart, setCart] = useState([]); // Estado para el carrito
+    const [products, setProducts] = useState([]); // Estado para los productos
+    const [isLoggedIn, setIsLoggedIn] = useState(false); // Estado de autenticación
+    const [userName, setUserName] = useState(''); // Estado para el nombre del usuario
+    const [showModal, setShowModal] = useState(false); // Estado para la visibilidad del modal
+    const [modalType, setModalType] = useState(''); // Tipo de modal (Sign Up / Log In)
+    const [formData, setFormData] = useState({ email: '', password: '', name: '' }); // Datos del formulario
+    const [errorMessage, setErrorMessage] = useState(''); // Mensaje de error
 
     // Fetch products from the backend
     useEffect(() => {
@@ -25,7 +25,7 @@ const Home = () => {
                 console.error('Error fetching products:', error.response ? error.response.data : error.message);
             }
         };
-        
+
         // Verificar si el usuario está autenticado
         const token = localStorage.getItem('token');
         if (token) {
@@ -43,40 +43,62 @@ const Home = () => {
                     console.error('Error fetching user profile:', error);
                 });
         }
-        
-        fetchProducts(); // Llamar también a los productos
-    }, []); // Correr solo una vez cuando el componente se monta
 
-    const handleAddToCart = (product, quantity) => {
+        fetchProducts(); // Llamar a la función para obtener productos
+    }, []); // Ejecutar solo una vez cuando el componente se monta
+
+    const handleAddToCart = (product) => {
         const existingProduct = cart.find(item => item.product._id === product._id);
 
         if (existingProduct) {
-            if (quantity <= 0) {
-                setCart(cart.filter(item => item.product._id !== product._id)); // Remove product if quantity is zero
-            } else {
-                setCart(cart.map(item => 
-                    item.product._id === product._id
-                    ? { ...existingProduct, quantity: quantity }
+            setCart(cart.map(item =>
+                item.product._id === product._id
+                    ? { ...existingProduct, quantity: existingProduct.quantity + 1 }
                     : item
-                ));
-            }
+            ));
         } else {
-            if (quantity > 0) {
-                setCart([...cart, { product, quantity }]); // Add new product to cart
+            setCart([...cart, { product, quantity: 1 }]); // Agregar nuevo producto al carrito
+        }
+    };
+
+    const handleDecreaseQuantity = (product) => {
+        const existingProduct = cart.find(item => item.product._id === product._id);
+
+        if (existingProduct) {
+            if (existingProduct.quantity > 1) {
+                setCart(cart.map(item =>
+                    item.product._id === product._id
+                        ? { ...existingProduct, quantity: existingProduct.quantity - 1 }
+                        : item
+                ));
+            } else {
+                setCart(cart.filter(item => item.product._id !== product._id)); // Eliminar producto si la cantidad es 0
             }
         }
     };
 
     const handleClearCart = () => {
-        setCart([]); // Empty the cart
+        setCart([]); // Vaciar el carrito
     };
 
-    // Functions to handle modal visibility
+
+const handleCheckout = () => {
+    navigate('/checkout', { 
+        state: { 
+            cart, 
+            isLoggedIn, 
+            userName 
+        } 
+    });
+};
+
+
+    // Funciones para manejar la visibilidad del modal
     const handleShowModal = (type) => {
         setModalType(type);
         setShowModal(true);
-        setFormData({ email: '', password: '', name: '' }); // Reset form data
-        setErrorMessage(''); // Reset error message
+        setFormData({ email: '', password: '', name: '' }); // Resetear datos del formulario
+        setErrorMessage(''); // Resetear mensaje de error
     };
 
     const handleCloseModal = () => {
@@ -98,35 +120,43 @@ const Home = () => {
         try {
             if (modalType === 'signup') {
                 const response = await axios.post('http://localhost:3000/api/user/register', { name, email, password });
-                alert(response.data.message); // Show success message
+                alert(response.data.message); // Mensaje de éxito
             } else if (modalType === 'login') {
                 const response = await axios.post('http://localhost:3000/api/user/login', { email, password });
-                alert('Login successful!'); // Show success message
-                setIsLoggedIn(true); // Set user as logged in
-                setUserName(response.data.name); // Set the user's name after login
-                localStorage.setItem('token', response.data.token); // Store token in localStorage
+                alert('Inicio de sesión exitoso!'); // Mensaje de éxito
+                setIsLoggedIn(true); // Establecer al usuario como autenticado
+                setUserName(response.data.name); // Establecer el nombre del usuario tras el inicio de sesión
+                localStorage.setItem('token', response.data.token); // Almacenar token en localStorage
             }
             handleCloseModal();
         } catch (error) {
-            setErrorMessage(error.response?.data.message || 'An error occurred.'); // Show error message
+            setErrorMessage(error.response?.data.message || 'Ocurrió un error.'); // Mostrar mensaje de error
         }
     };
 
+    // Calcular el total del carrito
+    const total = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+
     return (
         <Container style={{ marginBottom: '100px' }}>
-            {/* Pasa el userName y el estado de autenticación al Header */}
-            <Header isLoggedIn={isLoggedIn} userName={userName} onShowModal={handleShowModal} />
+            <Header 
+                isLoggedIn={isLoggedIn} 
+                userName={userName} 
+                total={total} // Pasar el total al Header
+                onCheckout={handleCheckout} // Pasar la función de checkout
+                onShowModal={handleShowModal} 
+            />
             <h1 className="mt-4" style={{ fontSize: '1.5em', marginBottom: '20px' }}>Catálogo de Productos</h1>
-            <ProductList products={products} onAddToCart={handleAddToCart} />
-            <FixedCart cart={cart} onClearCart={handleClearCart} />
+            <ProductList products={products} onAddToCart={handleAddToCart} onDecreaseQuantity={handleDecreaseQuantity} />
+            <FixedCart cart={cart} onClearCart={handleClearCart} onCheckout={handleCheckout} />
             
-            {/* Modal for Sign Up / Log In */}
+            {}
             <Modal show={showModal} onHide={handleCloseModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>{modalType === 'signup' ? 'Sign Up' : 'Log In'}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>} {/* Show error message */}
+                    {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>} {/* Mostrar mensaje de error */}
                     <Form onSubmit={handleSubmit}>
                         {modalType === 'signup' && (
                             <Form.Group className="mb-3">
@@ -158,12 +188,6 @@ const Home = () => {
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
-                            />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                            <Form.Check
-                                type="checkbox"
-                                label="Remember Password"
                             />
                         </Form.Group>
                         <Button variant="primary" type="submit">

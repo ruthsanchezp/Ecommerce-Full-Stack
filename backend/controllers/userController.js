@@ -2,6 +2,7 @@ const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 
 // Registrar usuario
+
 exports.registerUser = async (req, res) => {
     const { name, email, password } = req.body;
     try {
@@ -9,12 +10,13 @@ exports.registerUser = async (req, res) => {
         if (existingUser) {
             return res.status(400).json({ message: 'El email ya está registrado' });
         }
-        const newUser = await User.create({ name, email, password }); // Se crea el usuario sin hashing
+        const newUser = await User.create({ name, email, password }); // Create user with only name, email, and password
         res.status(201).json({ message: 'Usuario registrado exitosamente' });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
+
 
 // Iniciar sesión
 exports.loginUser = async (req, res) => {
@@ -43,28 +45,36 @@ exports.verifyToken = (req, res) => {
     });
 };
 exports.updateUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { email, name, phone, address, password } = req.body; // Allow optional fields
     try {
         const user = await User.findById(req.userId);
         if (!user) {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
 
-        // Actualiza los campos proporcionados
-        user.name = name || user.name;
-        user.email = email || user.email;
-        user.password = password || user.password;
+        // Update the fields that are provided
+        user.email = email || user.email; // Update only if a new email is provided
+        user.name = name || user.name; // Update name if provided
+        user.phone = phone || user.phone; // Update phone if provided
+        user.address = address || user.address; // Update address if provided
+        if (password) {
+            user.password = password; // Update password if provided
+        }
 
-        // Guarda los cambios
+        // Save changes
         await user.save();
 
-        // Devuelve el usuario actualizado sin la contraseña
+        // Return updated user data without password
         const { password: _, ...userWithoutPassword } = user.toObject();
         res.status(200).json(userWithoutPassword);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
+
+
+
+
 // Obtener perfil de usuario autenticado
 exports.getUserProfile = async (req, res) => {
     try {
